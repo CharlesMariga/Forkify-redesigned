@@ -477,9 +477,10 @@ const controlRecipes = async function() {
         const id = window.location.hash.slice(1);
         if (!id) return;
         _recipeViewDefault.default.renderSpinner();
-        await _model.loadRecipe(id);
+        // 0) Update results view to mark selected search result
+        _resultsViewDefault.default.update(_model.getSearchResultsPage());
         // 1) Loading recipe
-        _recipeViewDefault.default.renderSpinner();
+        await _model.loadRecipe(id);
         // 2) Render recipe
         _recipeViewDefault.default.render(_model.state.recipe);
     } catch (err) {
@@ -512,7 +513,8 @@ const controlServings = function(newServings) {
     // Update the recipe servings (in state)
     _model.updateServings(newServings);
     // Update the recipe view
-    _recipeViewDefault.default.render(_model.state.recipe);
+    // recipeView.render(model.state.recipe);
+    _recipeViewDefault.default.update(_model.state.recipe);
 };
 const init = function() {
     _recipeViewDefault.default.addHandlerRender(controlRecipes);
@@ -13695,7 +13697,7 @@ class RecipeView extends _viewDefault.default {
         this._parentElement.addEventListener('click', function(e) {
             const btn = e.target.closest('.btn--update-servings');
             if (!btn) return;
-            const { updateTo  } = +btn.dataset;
+            const updateTo = btn.dataset.updateTo;
             if (+updateTo > 0) handler(+updateTo);
         });
     }
@@ -14101,6 +14103,21 @@ class View {
         this._clear();
         this._parentElement.insertAdjacentHTML('afterbegin', markup);
     }
+    update(data) {
+        this._data = data;
+        const newMarkup = this._generateMarkup();
+        const newDom = document.createRange().createContextualFragment(newMarkup);
+        const newElements = Array.from(newDom.querySelectorAll('*'));
+        const curElements = Array.from(this._parentElement.querySelectorAll('*'));
+        newElements.forEach((newEl, i)=>{
+            const curEl = curElements[i];
+            // Update changed text
+            if (!newEl.isEqualNode(curEl) && newEl.firstChild.nodeValue.trim() !== '') curEl.textContent = newEl.textContent;
+            // Update changed attributes
+            if (!newEl.isEqualNode(curEl)) Array.from(newEl.attributes).forEach((attr)=>curEl.setAttribute(attr.name, attr.value)
+            );
+        });
+    }
     _clear() {
         this._parentElement.innerHTML = '';
     }
@@ -14160,7 +14177,6 @@ class SearchView {
         this._parentElement.addEventListener('submit', function(e) {
             e.stopImmediatePropagation();
             e.preventDefault();
-            console.log('Hellow world!');
             handler();
         });
     }
@@ -14181,9 +14197,10 @@ class ResultsView extends _viewDefault.default {
         return this._data.map(this._generateMarkupPreview).join('');
     }
     _generateMarkupPreview(result) {
+        const id = window.location.hash.slice(1);
         return(/*html */ `
       <li class="preview">
-        <a class="preview__link" href="#${result.id}">
+        <a class="preview__link ${result.id === id ? 'preview__link--active' : ''}" href="#${result.id}">
           <figure class="preview__fig">
             <img src="${result.image}" alt="Test" />
           </figure>

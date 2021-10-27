@@ -15,7 +15,6 @@ class SearchView {
     this._parentElement.addEventListener('submit', function (e) {
       e.stopImmediatePropagation();
       e.preventDefault();
-      console.log('Hellow world!');
       handler();
     });
   }
